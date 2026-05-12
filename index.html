@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏭 工業クイズ</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+
+:root {
+  --primary: #1565c0;
+  --primary-light: #42a5f5;
+  --primary-dark: #0d47a1;
+  --accent: #ff6f00;
+  --gold: #f9a825;
+  --gold-dark: #c6791a;
+  --parchment: #e3f2fd;
+  --parchment2: #bbdefb;
+  --ink: #0d1b2e;
+  --success: #2e7d32;
+  --danger: #c62828;
+  --shadow: 0 4px 24px rgba(13,71,161,0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: #05111f;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 48px;
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(21,101,192,0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 80%, rgba(255,111,0,0.15) 0%, transparent 50%),
+    repeating-linear-gradient(0deg, transparent, transparent 44px, rgba(66,165,245,0.03) 44px, rgba(66,165,245,0.03) 45px),
+    #05111f;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== HUD ===== */
+#hud {
+  position: sticky; top: 0; z-index: 100;
+  width: 100%; max-width: 540px;
+  background: linear-gradient(135deg, #05111f 0%, #0d2240 100%);
+  border-bottom: 2px solid var(--primary);
+  padding: 10px 16px 8px;
+  display: none;
+}
+.hud-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.hud-level { font-family:'Kaisei Decol',serif; font-size:0.95rem; color:#90caf9; font-weight:700; }
+.hud-title-badge { font-size:0.7rem; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; padding:2px 10px; border-radius:999px; font-weight:700; }
+.hud-score-chips { display:flex; gap:8px; }
+.hud-chip { font-size:0.78rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+.hud-chip.ok { background:rgba(46,125,50,0.25); color:#81c784; }
+.hud-chip.ng { background:rgba(198,40,40,0.25); color:#ef9a9a; }
+.exp-bar-wrap { display:flex; align-items:center; gap:8px; }
+.exp-label { font-size:0.7rem; color:#90caf9; white-space:nowrap; }
+.exp-bar-bg { flex:1; height:8px; background:rgba(255,255,255,0.1); border-radius:999px; overflow:hidden; }
+.exp-bar-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-light)); border-radius:999px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
+
+/* ===== レベルアップ ===== */
+#levelup-overlay {
+  display:none; position:fixed; inset:0; z-index:999;
+  background:rgba(5,17,31,0.9);
+  align-items:center; justify-content:center; flex-direction:column; text-align:center;
+}
+#levelup-overlay.show { display:flex; animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+.levelup-ring {
+  width:160px; height:160px; border-radius:50%;
+  background:radial-gradient(circle,rgba(66,165,245,0.3) 0%,transparent 70%);
+  display:flex; align-items:center; justify-content:center; margin-bottom:20px;
+  animation:ringPulse 1s ease-in-out infinite;
+}
+@keyframes ringPulse { 0%,100%{box-shadow:0 0 0 0 rgba(66,165,245,0.4);}50%{box-shadow:0 0 0 20px rgba(66,165,245,0);} }
+.levelup-emoji { font-size:5rem; }
+.levelup-text { font-family:'Kaisei Decol',serif; color:#90caf9; font-size:2rem; font-weight:700; text-shadow:0 0 20px rgba(66,165,245,0.8); margin-bottom:8px; }
+.levelup-level { font-size:1rem; color:#64b5f6; margin-bottom:12px; }
+.levelup-title { font-size:1.1rem; color:#90caf9; background:rgba(66,165,245,0.1); border:1px solid rgba(66,165,245,0.3); padding:8px 24px; border-radius:999px; margin-bottom:24px; }
+.btn-levelup-ok { padding:12px 40px; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; border:none; border-radius:6px; font-size:1rem; font-weight:700; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+
+/* ===== 称号 ===== */
+#title-overlay {
+  display:none; position:fixed; inset:0; z-index:998;
+  background:rgba(5,17,31,0.92);
+  align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px;
+}
+#title-overlay.show { display:flex; animation:fadeIn 0.4s ease; }
+.title-scroll { background:var(--parchment); border:3px solid var(--primary); border-radius:8px; padding:32px 28px; max-width:320px; width:100%; }
+.title-scroll::before { content:'✦ ✦ ✦'; font-size:0.7rem; color:var(--primary); letter-spacing:6px; display:block; margin-bottom:16px; }
+.title-new { font-size:0.75rem; color:var(--danger); font-weight:700; letter-spacing:0.1em; }
+.title-main { font-family:'Kaisei Decol',serif; font-size:1.8rem; color:var(--ink); margin:8px 0; }
+.title-emoji { font-size:2.5rem; margin:8px 0; }
+.title-desc { font-size:0.85rem; color:#1a3a6a; line-height:1.6; margin-top:8px; }
+.btn-title-ok { margin-top:20px; padding:10px 32px; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; border:none; border-radius:6px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+
+/* ===== INTRO ===== */
+#intro-screen { width:100%; display:flex; flex-direction:column; align-items:center; padding:48px 16px 60px; position:relative; z-index:1; }
+.intro-emblem { font-size:5rem; margin-bottom:8px; filter:drop-shadow(0 4px 16px rgba(66,165,245,0.5)); animation:float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);} }
+.intro-title { font-family:'Kaisei Decol',serif; font-size:1.8rem; color:#90caf9; text-shadow:0 2px 12px rgba(66,165,245,0.4); margin-bottom:4px; text-align:center; }
+.intro-sub { color:#64b5f6; font-size:0.85rem; margin-bottom:28px; text-align:center; }
+.intro-card { width:100%; max-width:340px; background:var(--parchment); border:2px solid var(--primary); border-radius:8px; padding:20px; margin-bottom:28px; text-align:center; }
+.intro-tags { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px; }
+.itag { padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; background:rgba(21,101,192,0.12); color:var(--primary-dark); border:1px solid rgba(21,101,192,0.25); }
+.intro-desc { font-size:0.88rem; color:#1a3a6a; line-height:1.8; }
+.btn-start { padding:16px 48px; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; border:none; border-radius:8px; font-family:'Kaisei Decol',serif; font-size:1.2rem; font-weight:700; cursor:pointer; box-shadow:0 4px 20px rgba(66,165,245,0.4); transition:all 0.2s; letter-spacing:0.05em; }
+.btn-start:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(66,165,245,0.5); }
+
+/* ===== QUIZ ===== */
+#quiz-screen { display:none; width:100%; max-width:540px; padding:16px 0 0; position:relative; z-index:1; }
+.section-badge { display:inline-block; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; font-size:0.7rem; font-weight:700; padding:3px 14px; border-radius:999px; margin-bottom:8px; letter-spacing:0.05em; }
+.q-card { background:var(--parchment); border-radius:6px; padding:28px 20px 20px; box-shadow:var(--shadow), inset 0 0 0 1px rgba(21,101,192,0.18); border-top:3px solid var(--primary); margin:0 16px; animation:cardIn 0.35s cubic-bezier(.4,0,.2,1); }
+@keyframes cardIn { from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);} }
+.q-meta { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.q-num { font-size:0.75rem; color:#1565c0; }
+.q-type-badge { font-size:0.68rem; padding:2px 8px; border-radius:999px; font-weight:700; }
+.q-type-badge.choice { background:#fff8e1; color:var(--accent); }
+.q-type-badge.text   { background:#e3f2fd; color:var(--primary-dark); }
+.q-text { font-family:'Kaisei Decol',serif; font-size:1.05rem; line-height:1.7; color:var(--ink); margin-bottom:18px; }
+
+/* 棒グラフ */
+.chart-wrap { background:white; border:2px solid rgba(21,101,192,0.2); border-radius:8px; padding:14px 12px 10px; margin-bottom:14px; }
+.chart-title { font-size:0.75rem; color:var(--primary-dark); font-weight:700; margin-bottom:10px; text-align:center; }
+.chart-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+.chart-bar-label { font-size:0.75rem; color:var(--ink); width:88px; flex-shrink:0; text-align:right; }
+.chart-bar-bg { flex:1; height:22px; background:#f0f4f8; border-radius:4px; overflow:hidden; }
+.chart-bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:6px; font-size:0.7rem; color:white; font-weight:700; white-space:nowrap; transition:width 0.8s cubic-bezier(.4,0,.2,1); }
+.chart-bar-pct { font-size:0.75rem; color:var(--primary-dark); font-weight:700; width:42px; flex-shrink:0; }
+
+/* 選択肢 */
+.choices { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.choice-btn { width:100%; padding:12px 16px; border:2px solid rgba(21,101,192,0.2); border-radius:6px; background:white; font-size:0.93rem; text-align:left; cursor:pointer; transition:all 0.2s; font-family:'Noto Sans JP',sans-serif; color:var(--ink); position:relative; }
+.choice-btn:hover:not(:disabled) { border-color:var(--primary); background:var(--parchment2); transform:translateX(4px); }
+.choice-btn.correct  { border-color:var(--success); background:#e8f5e9; color:#1b5e20; font-weight:700; }
+.choice-btn.wrong    { border-color:var(--danger);  background:#ffebee; color:#b71c1c; font-weight:700; }
+.choice-btn.show-ans { border-color:var(--success); background:#e8f5e9; color:#1b5e20; }
+.choice-btn:disabled { cursor:default; }
+.c-icon { position:absolute; right:12px; top:50%; transform:translateY(-50%); }
+
+/* テキスト入力 */
+.text-input-area { margin-bottom:10px; }
+.text-input-area input { width:100%; padding:12px 14px; border:2px solid rgba(21,101,192,0.22); border-radius:6px; font-size:1rem; font-family:'Noto Sans JP',sans-serif; outline:none; background:white; transition:border-color 0.2s; color:var(--ink); }
+.text-input-area input:focus { border-color:var(--primary); }
+.text-input-area input.correct { border-color:var(--success); background:#e8f5e9; }
+.text-input-area input.wrong   { border-color:var(--danger);  background:#ffebee; }
+
+.hint-row { margin:6px 0; }
+.hint-btn { display:inline-flex; align-items:center; gap:4px; padding:5px 14px; background:rgba(249,168,37,0.1); border:1.5px dashed var(--gold-dark); border-radius:999px; font-size:0.78rem; color:#a07020; cursor:pointer; font-family:'Noto Sans JP',sans-serif; font-weight:700; transition:background 0.2s; }
+.hint-btn:hover { background:rgba(249,168,37,0.2); }
+.hint-btn:disabled { opacity:0.5; cursor:default; }
+.hint-box { display:none; margin-top:6px; padding:8px 12px; background:rgba(249,168,37,0.08); border-left:3px solid var(--gold-dark); border-radius:4px; font-size:0.8rem; color:#7a5010; }
+.hint-box.show { display:block; animation:slideIn 0.2s ease; }
+
+.feedback { display:none; padding:12px 14px; border-radius:6px; margin-bottom:12px; font-size:0.88rem; line-height:1.65; animation:slideIn 0.3s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
+.feedback.correct { background:#e8f5e9; color:#1b5e20; border-left:4px solid var(--success); }
+.feedback.wrong   { background:#ffebee; color:#b71c1c; border-left:4px solid var(--danger); }
+.feedback.show { display:block; }
+.fb-title { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+.fb-exp { font-size:0.8rem; margin-top:4px; }
+.fb-explain { font-size:0.83rem; color:#555; margin-top:6px; line-height:1.6; }
+
+.btn { width:100%; padding:13px; border:none; border-radius:6px; font-size:0.95rem; font-weight:700; cursor:pointer; font-family:'Noto Sans JP',sans-serif; transition:all 0.2s; }
+.btn-primary { background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; box-shadow:0 3px 12px rgba(66,165,245,0.3); }
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 5px 16px rgba(66,165,245,0.4); }
+.btn-secondary { background:linear-gradient(135deg,#e65100,var(--accent)); color:white; }
+.btn:disabled { opacity:0.6; cursor:default; transform:none !important; }
+
+/* ===== RESULT ===== */
+#result-screen { display:none; width:100%; max-width:540px; padding:40px 16px 60px; position:relative; z-index:1; text-align:center; }
+.result-emblem { font-size:4rem; margin-bottom:12px; }
+.result-title { font-family:'Kaisei Decol',serif; font-size:1.5rem; color:#90caf9; margin-bottom:4px; }
+.result-title-display { display:inline-block; background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; font-size:0.9rem; font-weight:700; padding:4px 16px; border-radius:999px; margin-bottom:16px; }
+.result-card { background:var(--parchment); border:2px solid var(--primary); border-radius:8px; padding:20px; margin-bottom:16px; }
+.result-score { font-family:'Kaisei Decol',serif; font-size:3rem; color:var(--ink); font-weight:700; }
+.result-score span { font-size:1rem; color:var(--primary); font-weight:400; }
+.result-level-row { display:flex; align-items:center; justify-content:center; gap:16px; margin:12px 0; flex-wrap:wrap; }
+.rl-item { text-align:center; }
+.rl-label { font-size:0.7rem; color:var(--primary); }
+.rl-val { font-size:1.2rem; font-weight:700; color:var(--ink); }
+.result-msg { font-size:0.9rem; color:#1a3a6a; line-height:1.7; margin:12px 0; }
+.result-table { width:100%; border-collapse:collapse; font-size:0.82rem; text-align:left; margin-top:12px; }
+.result-table th { background:rgba(21,101,192,0.1); padding:7px 10px; color:#1a3a6a; font-weight:700; }
+.result-table td { padding:7px 10px; border-bottom:1px solid rgba(21,101,192,0.1); }
+.result-table .ok  { color:var(--success); font-weight:700; }
+.result-table .bad { color:var(--danger);  font-weight:700; }
+.title-collection { background:var(--parchment); border:2px solid var(--primary); border-radius:8px; padding:16px; margin-bottom:16px; }
+.tc-header { font-family:'Kaisei Decol',serif; font-size:1rem; color:var(--ink); margin-bottom:10px; }
+.tc-grid { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+.tc-badge { padding:4px 12px; border-radius:999px; font-size:0.78rem; font-weight:700; }
+.tc-badge.earned { background:linear-gradient(135deg,var(--primary-dark),var(--primary-light)); color:white; }
+.tc-badge.locked { background:rgba(21,101,192,0.1); color:#90a4ae; border:1px dashed rgba(21,101,192,0.25); }
+.stars { font-size:1.8rem; letter-spacing:4px; margin:8px 0; }
+.result-btns { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+</style>
+</head>
+<body>
+
+<!-- レベルアップ -->
+<div id="levelup-overlay">
+  <div class="levelup-ring"><div class="levelup-emoji">⚙️</div></div>
+  <div class="levelup-text">LEVEL UP！</div>
+  <div class="levelup-level" id="lu-level">Lv.2 になった！</div>
+  <div class="levelup-title" id="lu-title"></div>
+  <button class="btn-levelup-ok" onclick="closeLevelup()">よし！続けるぞ ▶</button>
+</div>
+
+<!-- 称号 -->
+<div id="title-overlay">
+  <div class="title-scroll">
+    <div class="title-new">🎊 称号獲得！</div>
+    <div class="title-emoji" id="to-emoji">🏭</div>
+    <div class="title-main" id="to-title"></div>
+    <div class="title-desc" id="to-desc"></div>
+    <button class="btn-title-ok" onclick="closeTitleOverlay()">受け取る！</button>
+  </div>
+</div>
+
+<!-- INTRO -->
+<div id="intro-screen">
+  <div style="height:40px"></div>
+  <div class="intro-emblem">🏭</div>
+  <div class="intro-title">工業１・２<br>クイズ</div>
+  <div class="intro-sub">１２月の演習から出題！</div>
+  <div class="intro-card">
+    <div class="intro-tags">
+      <span class="itag">🎯 全19問</span>
+      <span class="itag">⏱ 約5分</span>
+      <span class="itag">📚 小4 社会</span>
+    </div>
+    <div class="intro-desc">
+      経験値を手に入れてレベルアップ！<br>
+      全ての称号を手に入れよう！
+    </div>
+  </div>
+  <button class="btn-start" onclick="startQuiz()">スタート！ 🚀</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz-screen">
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-level" id="hud-level">⚙️ Lv.1 工場見習い</div>
+      <div class="hud-score-chips">
+        <div class="hud-chip ok">✅ <span id="hud-ok">0</span></div>
+        <div class="hud-chip ng">❌ <span id="hud-ng">0</span></div>
+      </div>
+    </div>
+    <div class="exp-bar-wrap">
+      <div class="exp-label" id="exp-text">EXP 0/50</div>
+      <div class="exp-bar-bg"><div class="exp-bar-fill" id="exp-fill" style="width:0%"></div></div>
+      <div class="hud-title-badge" id="hud-title-badge">工場見習い</div>
+    </div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div style="padding:0 16px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden;">
+        <div id="prog-fill" style="height:100%;background:linear-gradient(90deg,var(--primary-dark),var(--primary-light));border-radius:999px;transition:width 0.5s;width:0%"></div>
+      </div>
+      <div style="font-size:0.75rem;color:#90caf9;white-space:nowrap;" id="prog-label">0/20</div>
+    </div>
+  </div>
+
+  <div class="q-card" id="q-card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <span class="section-badge" id="q-section">大問1</span>
+      <div class="q-meta" style="margin-bottom:0;flex:1;">
+        <span class="q-num" id="q-num">問1 / 20</span>
+        <span class="q-type-badge" id="q-type-badge">選択</span>
+      </div>
+    </div>
+    <div class="q-text" id="q-text"></div>
+    <div id="chart-area"></div>
+    <div id="choices-wrap"></div>
+    <div id="text-input-wrap" style="display:none">
+      <div class="text-input-area">
+        <input type="text" id="text-ans" placeholder="答えを入力…" autocomplete="off">
+      </div>
+      <div class="hint-row">
+        <button class="hint-btn" id="hint-btn" onclick="showHint()">💡 ヒントを見る</button>
+        <div class="hint-box" id="hint-box"></div>
+      </div>
+      <button class="btn btn-secondary" id="submit-btn" onclick="submitText()" style="margin-bottom:10px;">答え合わせ ✔</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none;">次の問題へ →</button>
+  </div>
+  <div style="height:32px"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen">
+  <div class="result-emblem" id="res-emoji">🏆</div>
+  <div class="result-title">クイズ完了！</div>
+  <div class="stars" id="res-stars">⭐⭐⭐</div>
+  <div class="result-title-display" id="res-title-disp">🏭 工業大臣</div>
+  <div class="result-card">
+    <div class="result-score" id="res-score">0<span> / 20問正解</span></div>
+    <div class="result-level-row">
+      <div class="rl-item"><div class="rl-label">最終レベル</div><div class="rl-val" id="res-level">Lv.1</div></div>
+      <div class="rl-item"><div class="rl-label">獲得EXP</div><div class="rl-val" id="res-exp">0</div></div>
+      <div class="rl-item"><div class="rl-label">正答率</div><div class="rl-val" id="res-pct">0%</div></div>
+    </div>
+    <div class="result-msg" id="res-msg"></div>
+  </div>
+  <div class="title-collection">
+    <div class="tc-header">📜 称号コレクション</div>
+    <div class="tc-grid" id="tc-grid"></div>
+  </div>
+  <div class="result-card">
+    <table class="result-table">
+      <thead><tr><th>#</th><th>問題</th><th>結果</th></tr></thead>
+      <tbody id="res-tbody"></tbody>
+    </table>
+  </div>
+  <div class="result-btns">
+    <button class="btn btn-primary" onclick="restartQuiz()">もう一度やる 🔄</button>
+    <button class="btn btn-secondary" onclick="reviewWrong()" id="review-btn">❌ 間違えた問題だけやる</button>
+  </div>
+</div>
+
+<script>
+// ===== RPGシステム =====
+const LEVELS = [
+  { lv:1, need:0,   title:'工場見習い',   emoji:'⚙️' },
+  { lv:2, need:30,  title:'軽工業職人',   emoji:'🔧' },
+  { lv:3, need:80,  title:'重工業の徒',   emoji:'⚒️' },
+  { lv:4, need:150, title:'化学工業士',   emoji:'🧪' },
+  { lv:5, need:250, title:'工業地帯の星', emoji:'🏗️' },
+  { lv:6, need:380, title:'太平洋の覇者', emoji:'🌊' },
+  { lv:7, need:550, title:'工業大臣',     emoji:'🏭' },
+];
+
+const TITLES = [
+  { id:'start',    emoji:'🔩', name:'工場見習い',     desc:'クイズに挑戦した！',        cond:(r,c,w)=>true },
+  { id:'noerror',  emoji:'🏹', name:'無傷の技術者',   desc:'1問もミスせずにクリア！',   cond:(r,c,w)=>w===0 && r.length===r.filter(x=>x).length },
+  { id:'half',     emoji:'⚙️', name:'重化学の達人',   desc:'半分以上正解した！',        cond:(r,c,w)=>c>=Math.ceil(r.length/2) },
+  { id:'speed',    emoji:'⚡', name:'知の探求者',     desc:'15問以上正解した！',        cond:(r,c,w)=>c>=15 },
+  { id:'allclear', emoji:'👑', name:'工業大臣',       desc:'全問正解！最高の称号！',    cond:(r,c,w)=>w===0 && c===r.length },
+];
+
+let exp=0, currentLevel=1, earnedTitles=[];
+
+function getLevel(e){ let lv=LEVELS[0]; for(const l of LEVELS){ if(e>=l.need) lv=l; } return lv; }
+function addExp(amount){
+  const prev=getLevel(exp); exp+=amount; const next=getLevel(exp); updateHUD();
+  if(next.lv>prev.lv){ showLevelup(next); return true; } return false;
+}
+function updateHUD(){
+  const lv=getLevel(exp); const nextLv=LEVELS.find(l=>l.lv===lv.lv+1);
+  const expInLv=exp-lv.need; const expNeeded=nextLv?nextLv.need-lv.need:999;
+  const pct=nextLv?Math.min((expInLv/expNeeded)*100,100):100;
+  document.getElementById('hud-level').textContent=`${lv.emoji} Lv.${lv.lv} ${lv.title}`;
+  document.getElementById('hud-title-badge').textContent=lv.title;
+  document.getElementById('exp-fill').style.width=pct+'%';
+  document.getElementById('exp-text').textContent=nextLv?`EXP ${expInLv}/${expNeeded}`:'MAX';
+  currentLevel=lv.lv;
+}
+function showLevelup(lv){
+  document.getElementById('lu-level').textContent=`Lv.${lv.lv} になった！`;
+  document.getElementById('lu-title').textContent=`${lv.emoji} 称号「${lv.title}」を獲得！`;
+  document.getElementById('levelup-overlay').classList.add('show');
+}
+function closeLevelup(){ document.getElementById('levelup-overlay').classList.remove('show'); }
+let titleCallback=null;
+function showTitleOverlay(t,cb){
+  document.getElementById('to-emoji').textContent=t.emoji;
+  document.getElementById('to-title').textContent=t.name;
+  document.getElementById('to-desc').textContent=t.desc;
+  document.getElementById('title-overlay').classList.add('show');
+  titleCallback=cb||null;
+}
+function closeTitleOverlay(){
+  document.getElementById('title-overlay').classList.remove('show');
+  if(titleCallback){ titleCallback(); titleCallback=null; }
+}
+
+// ===== 問題データ =====
+const ALL_QUESTIONS = [
+  // 大問1
+  { id:1, section:'大問1', type:'text',
+    text:'大きな工場で大量に製品を生産し、金属工業や機械工業などに分類される工業を何といいますか？',
+    answer:'重化学工業', hint:'「重い」「化学」という漢字が入る',
+    explanation:'重化学工業（じゅうかがくこうぎょう）は鉄鋼・化学・機械など大規模な工場で行われる工業のまとまりです。',
+    exp:10 },
+  { id:2, section:'大問1', type:'text',
+    text:'主に日用品をつくる工業を何といいますか？',
+    answer:'軽工業', hint:'「軽い」という漢字が入る',
+    explanation:'軽工業（けいこうぎょう）は食料品・繊維・日用品など、比較的軽い製品をつくる工業です。',
+    exp:10 },
+  { id:3, section:'大問1', type:'text',
+    text:'ボーキサイトを原料として、多くの電力を使ってつくられるものは何ですか？',
+    answer:'アルミニウム', hint:'軽くてさびにくい金属。缶や飛行機にも使われる',
+    explanation:'アルミニウムはボーキサイトを電気分解してつくります。製造に大量の電力が必要なため「電気の缶詰」とも呼ばれます。',
+    exp:10 },
+  { id:4, section:'大問1', type:'text',
+    text:'関東地方南部から九州北部にかけて、帯状に連なる日本最大の工業地帯・地域の集まりを何といいますか？',
+    answer:'太平洋ベルト', hint:'日本の工業が集中する帯状の地域。太平洋側に広がる',
+    explanation:'太平洋ベルトは京浜・中京・阪神などの工業地帯・地域が連なる日本最大の工業地域です。原料の輸入や製品の輸出に有利な太平洋沿岸に発展しました。',
+    exp:10 },
+  { id:5, section:'大問1', type:'text',
+    text:'電子機器の部品や日用品をつくる中小工場が多いことが特色である工業地帯はどこですか？',
+    answer:'阪神工業地帯', hint:'大阪・神戸を中心とした工業地帯',
+    explanation:'阪神工業地帯（はんしんこうぎょうちたい）は大阪・神戸を中心とし、中小工場が多く集まる工業地帯です。金属・化学工業も盛んです。',
+    exp:10 },
+  { id:6, section:'大問1', type:'text',
+    text:'北陸工業地域は何を中心に発展してきましたか？',
+    answer:'伝統的工芸品づくり', answers:['伝統的工芸品づくり','地場産業','伝統工芸'],
+    hint:'昔から受け継がれてきた手工業のこと',
+    explanation:'北陸工業地域は漆器・陶磁器・絹織物などの伝統的工芸品づくり（地場産業）を中心に発展してきました。',
+    exp:10 },
+  // 大問2
+  { id:7, section:'大問2', type:'choice',
+    text:'電子部品の材料として利用されるファインセラミックスなどの陶磁器やガラス、セメントなどをつくる工業を何といいますか？（資料1）',
+    choices:['よう業','化学工業','金属工業','機械工業'],
+    answer:'よう業',
+    explanation:'窯業（ようぎょう）は粘土・石灰石・けい砂などを高温で焼いてつくる工業。陶磁器・ガラス・セメントなどが代表例です。',
+    exp:8 },
+  { id:8, section:'大問2', type:'choice',
+    text:'石油や石炭などを原料として、プラスチックや薬品・化学肥料などをつくる工業を何といいますか？（資料2）',
+    choices:['よう業','化学工業','金属工業','繊維工業'],
+    answer:'化学工業',
+    explanation:'化学工業（かがくこうぎょう）は石油・石炭などを原料に化学反応を使ってプラスチック・薬品・合成繊維などをつくります。',
+    exp:8 },
+  { id:9, section:'大問2', type:'choice',
+    text:'木を細かくくだいたチップを溶かして、せんい質を取り出したものをもとに紙をつくるときに使う材料は何ですか？（資料3）',
+    choices:['バルブ','パルプ','半導体','セラミック'],
+    answer:'パルプ',
+    explanation:'パルプは木材チップを化学処理して取り出したせんい。これをもとに紙がつくられます。',
+    exp:8 },
+  { id:10, section:'大問2', type:'choice',
+    text:'温度などの条件によって電気を通したり通さなかったりする性質をもつもので、ICやコンピューターなどの電子部品をつくるものは何ですか？（資料4）',
+    choices:['バルブ','パルプ','半導体','セラミック'],
+    answer:'半導体',
+    explanation:'半導体（はんどうたい）は電気を通したり通さなかったりする性質を持つ素材。ICチップ・CPU・メモリなどの電子部品に使われます。',
+    exp:8 },
+  // 大問3
+  { id:13, section:'大問3', type:'choice',
+    text:'機械工業の割合が多く、日本を代表する自動車メーカーがある工業地帯はどこですか？',
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','北九州工業地帯'],
+    answer:'中京工業地帯',
+    explanation:'中京工業地帯は愛知県を中心とした工業地帯で、トヨタ自動車など日本を代表する自動車メーカーがあります。機械工業（自動車）の割合が全工業地帯の中で最も高く、輸出額も日本一です。「中京」とは名古屋を中心とした地域のことです。',
+    exp:10 },
+  { id:14, section:'大問3', type:'text',
+    text:'日本を代表する自動車メーカーがある愛知県の市はどこですか？',
+    answer:'豊田市', hint:'その自動車メーカーと同じ名前の市',
+    explanation:'豊田市（とよたし）はトヨタ自動車の本社がある愛知県の市です。市の名前がトヨタ自動車にちなんでつけられたほど、自動車産業と深い関わりがあります。自動車の部品をつくる工場なども集まっており、日本最大の自動車産業都市です。',
+    exp:10 },
+  { id:15, section:'大問3', type:'text',
+    text:'四日市の石油化学コンビナートと並んで日本有数の規模を誇る石油化学コンビナート（水島コンビナート）がある岡山県の市はどこですか？',
+    answer:'倉敷市', hint:'岡山県の市。水島コンビナートがある',
+    explanation:'倉敷市（くらしきし）は岡山県にある市で、水島コンビナートがあります。水島コンビナートは石油化学だけでなく、鉄鋼や自動車など様々な産業が集まっており、瀬戸内工業地域の中心的な役割を担っています。「コンビナート」とは、複数の工場が原料や製品をやりとりしながら一か所に集まった大規模な工業地区のことです。',
+    exp:10 },
+  { id:16, section:'大問3', type:'text',
+    text:'岡山県倉敷市にある水島コンビナートは、石油化学だけではなく、鉄鋼や自動車など様々な産業が集まっています。この工業地域はどこですか？',
+    answer:'瀬戸内工業地域', hint:'中国地方と四国に挟まれた海の名前が入る',
+    explanation:'瀬戸内工業地域（せとないこうぎょうちいき）は広島・岡山・山口など瀬戸内海に面した地域に広がる工業地域です。瀬戸内海は波がおだやかで船の航行に便利なため、原料の輸入や製品の輸出がしやすく、石油化学・鉄鋼・造船・自動車など多くの工業が発達しました。',
+    exp:10 },
+  { id:17, section:'大問3', type:'chart',
+    text:'下のグラフはある地域の工業出荷額の割合を示しています。このグラフに当てはまる工業地帯・地域はどれですか？',
+    hint:'各工業地帯の特徴→ 中京＝機械が約7割 / 北九州＝食料品・金属が比較的高い / 阪神＝金属が最も高い / 京浜＝印刷業がある',
+    chartData:[
+      { label:'機械',   value:47.2, color:'#e65100' },
+      { label:'化学',   value:17.0, color:'#1565c0' },
+      { label:'食料品', value:12.2, color:'#2e7d32' },
+      { label:'金属',   value:8.7,  color:'#6a1b9a' },
+      { label:'印刷業', value:3.8,  color:'#00838f' },
+      { label:'その他', value:11.1, color:'#90a4ae' },
+    ],
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','北九州工業地帯'],
+    answer:'京浜工業地帯',
+    explanation:'「機械（47.2%）」が最も多く、次いで「化学（17.0%）」「食料品（12.2%）」の順です。京浜工業地帯（東京・横浜・川崎）は印刷業の割合があるのも特徴のひとつです。4つの工業地帯の中で「印刷業」があるのは京浜だけなので、覚えておきましょう。',
+    exp:8 },
+  { id:18, section:'大問3', type:'chart',
+    text:'下のグラフはある地域の工業出荷額の割合を示しています。このグラフに当てはまる工業地帯・地域はどれですか？',
+    hint:'各工業地帯の特徴→ 中京＝機械が約7割 / 北九州＝食料品・金属が比較的高い / 阪神＝金属が最も高い / 京浜＝印刷業がある',
+    chartData:[
+      { label:'機械',   value:44.1, color:'#e65100' },
+      { label:'食料品', value:17.0, color:'#2e7d32' },
+      { label:'金属',   value:16.4, color:'#6a1b9a' },
+      { label:'その他', value:22.5, color:'#90a4ae' },
+    ],
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','北九州工業地帯'],
+    answer:'北九州工業地帯',
+    explanation:'「食料品（17.0%）」と「金属（16.4%）」の割合が比較的高いのがポイントです。北九州工業地帯は九州北部にあり、かつては官営八幡製鉄所を中心とした鉄鋼業で栄えましたが、現在は機械・食料品工業が中心になっています。4つの工業地帯の中で最も規模が小さい工業地帯です。',
+    exp:8 },
+  { id:19, section:'大問3', type:'chart',
+    text:'下のグラフはある地域の工業出荷額の割合を示しています。このグラフに当てはまる工業地帯・地域はどれですか？',
+    hint:'各工業地帯の特徴→ 中京＝機械が約7割 / 北九州＝食料品・金属が比較的高い / 阪神＝金属が最も高い / 京浜＝印刷業がある',
+    chartData:[
+      { label:'機械',   value:68.1, color:'#e65100' },
+      { label:'金属',   value:9.6,  color:'#6a1b9a' },
+      { label:'化学',   value:6.6,  color:'#1565c0' },
+      { label:'食料品', value:5.3,  color:'#2e7d32' },
+      { label:'その他', value:10.4, color:'#90a4ae' },
+    ],
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','北九州工業地帯'],
+    answer:'中京工業地帯',
+    explanation:'「機械（68.1%）」の割合が圧倒的に高いのがポイントです。輸送用機械（自動車）が47.6%を占めており、トヨタ自動車をはじめ多くの自動車メーカーや関連工場が集まっています。日本で最も生産額が多い工業地帯です。「中京＝機械（自動車）が多い」と覚えましょう。',
+    exp:8 },
+  { id:20, section:'大問3', type:'chart',
+    text:'下のグラフはある地域の工業出荷額の割合を示しています。このグラフに当てはまる工業地帯・地域はどれですか？',
+    hint:'瀬戸内工業地域の特徴→ 機械・化学・金属・その他がバランスよく分散。どれか1つが突出して高くない',
+    chartData:[
+      { label:'機械',   value:34.6, color:'#e65100' },
+      { label:'化学',   value:20.0, color:'#1565c0' },
+      { label:'金属',   value:18.2, color:'#6a1b9a' },
+      { label:'その他', value:18.5, color:'#90a4ae' },
+      { label:'食料品', value:8.7,  color:'#2e7d32' },
+    ],
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','瀬戸内工業地域'],
+    answer:'瀬戸内工業地域',
+    explanation:'機械・化学・金属がバランスよく分布しているのがポイントです。瀬戸内工業地域は広島・岡山・山口など瀬戸内海沿岸に広がる工業地域で、石油化学コンビナート・鉄鋼・造船・自動車など多様な工業が発達しています。どの項目も突出せず分散しているのが特徴です。',
+    exp:8 },
+  { id:21, section:'大問3', type:'chart',
+    text:'下のグラフはある地域の工業出荷額の割合を示しています。このグラフに当てはまる工業地帯・地域はどれですか？',
+    hint:'各工業地帯の特徴→ 中京＝機械が約7割 / 北九州＝食料品・金属が比較的高い / 阪神＝金属が最も高い / 京浜＝印刷業がある',
+    chartData:[
+      { label:'機械',   value:39.7, color:'#e65100' },
+      { label:'金属',   value:19.0, color:'#6a1b9a' },
+      { label:'化学',   value:15.8, color:'#1565c0' },
+      { label:'食料品', value:11.6, color:'#2e7d32' },
+      { label:'その他', value:13.9, color:'#90a4ae' },
+    ],
+    choices:['京浜工業地帯','中京工業地帯','阪神工業地帯','北九州工業地帯'],
+    answer:'阪神工業地帯',
+    explanation:'「金属（19.0%）」の割合が4つの工業地帯の中で最も高いのがポイントです。阪神工業地帯（大阪・神戸）は中小工場が多く、金属・機械・化学工業が盛んです。かつては繊維工業も盛んでしたが、現在は機械工業の割合が高まっています。「阪神＝金属が多い」と覚えましょう。',
+    exp:8 },
+];
+
+// ===== ゲーム状態 =====
+let questions=[], currentIndex=0, correctCount=0, wrongCount=0, answered=false, results=[];
+
+function startQuiz(questionSet){
+  const isReview=!!questionSet;
+  questions=questionSet||[...ALL_QUESTIONS].sort(()=>Math.random()-0.5);
+  currentIndex=0; correctCount=0; wrongCount=0; results=[]; answered=false; exp=0;
+  if(!isReview) earnedTitles=[];
+  document.getElementById('intro-screen').style.display='none';
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('quiz-screen').style.display='block';
+  document.getElementById('hud').style.display='block';
+  updateHUD(); renderQuestion();
+  if(!isReview && !earnedTitles.includes(TITLES[0].id)){
+    setTimeout(()=>{ showTitleOverlay(TITLES[0]); earnedTitles.push(TITLES[0].id); },600);
+  }
+}
+
+function renderQuestion(){
+  const q=questions[currentIndex];
+  answered=false;
+  const card=document.getElementById('q-card');
+  card.style.animation='none'; void card.offsetWidth; card.style.animation='';
+  document.getElementById('q-section').textContent=q.section;
+  document.getElementById('q-num').textContent=`問${currentIndex+1} / ${questions.length}`;
+  document.getElementById('q-text').textContent=q.text;
+  const tb=document.getElementById('q-type-badge');
+  if(q.type==='choice'||q.type==='chart'){ tb.textContent='選択'; tb.className='q-type-badge choice'; }
+  else{ tb.textContent='記述'; tb.className='q-type-badge text'; }
+  const fb=document.getElementById('feedback');
+  fb.className='feedback'; fb.innerHTML='';
+  document.getElementById('next-btn').style.display='none';
+  const choicesWrap=document.getElementById('choices-wrap');
+  const textWrap=document.getElementById('text-input-wrap');
+  const chartArea=document.getElementById('chart-area');
+  choicesWrap.innerHTML=''; textWrap.style.display='none'; chartArea.innerHTML='';
+
+  if(q.type==='chart'){
+    let html=`<div class="chart-wrap"><div class="chart-title">📊 工業出荷額の割合</div>`;
+    q.chartData.forEach(d=>{
+      html+=`<div class="chart-bar-row">
+        <div class="chart-bar-label">${d.label}</div>
+        <div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${d.value}%;background:${d.color};">${d.value}%</div></div>
+        <div class="chart-bar-pct">${d.value}%</div>
+      </div>`;
+    });
+    html+=`</div>`;
+    chartArea.innerHTML=html;
+    // chartのヒントエリアをchartAreaの下に追加
+    if(q.hint){
+      const hintWrap=document.createElement('div');
+      hintWrap.className='hint-row';
+      hintWrap.innerHTML=`
+        <button class="hint-btn" id="hint-btn-chart" onclick="showHint()">💡 ヒントを見る</button>
+        <div class="hint-box" id="hint-box-chart"></div>`;
+      chartArea.appendChild(hintWrap);
+    }
+    renderChoices(q,choicesWrap);
+  } else if(q.type==='choice'){
+    renderChoices(q,choicesWrap);
+  } else {
+    textWrap.style.display='block';
+    const input=document.getElementById('text-ans');
+    input.value=''; input.className=''; input.disabled=false;
+    const hintBtn=document.getElementById('hint-btn');
+    const hintBox=document.getElementById('hint-box');
+    hintBox.textContent=''; hintBox.classList.remove('show');
+    if(q.hint){ hintBtn.style.display=''; hintBtn.disabled=false; hintBtn.textContent='💡 ヒントを見る'; }
+    else{ hintBtn.style.display='none'; }
+    document.getElementById('submit-btn').disabled=false;
+    setTimeout(()=>input.focus(),100);
+    input.onkeydown=e=>{ if(e.key==='Enter') submitText(); };
+  }
+  updateProgress();
+}
+
+function renderChoices(q,wrap){
+  const div=document.createElement('div');
+  div.className='choices';
+  const list=q.ordered?[...q.choices]:[...q.choices].sort(()=>Math.random()-0.5);
+  list.forEach(ch=>{
+    const btn=document.createElement('button');
+    btn.className='choice-btn'; btn.textContent=ch;
+    btn.onclick=()=>selectChoice(btn,ch,q);
+    div.appendChild(btn);
+  });
+  wrap.appendChild(div);
+}
+
+function selectChoice(btn,choice,q){
+  if(answered) return;
+  answered=true;
+  const isCorrect=(choice===q.answer);
+  document.querySelectorAll('.choice-btn').forEach(b=>{
+    b.disabled=true;
+    if(b.textContent===q.answer){ b.classList.add('show-ans'); b.innerHTML+=`<span class="c-icon">✅</span>`; }
+  });
+  if(!isCorrect){ btn.classList.remove('show-ans'); btn.classList.add('wrong'); btn.innerHTML=btn.textContent.replace('<span class="c-icon">✅</span>','')+`<span class="c-icon">❌</span>`; }
+  else{ btn.classList.add('correct'); }
+  processAnswer(isCorrect,choice,q);
+}
+
+function showHint(){
+  const q=questions[currentIndex];
+  // chart型は専用エリア、それ以外は通常エリア
+  const hintBox = q.type==='chart'
+    ? document.getElementById('hint-box-chart')
+    : document.getElementById('hint-box');
+  const hintBtn = q.type==='chart'
+    ? document.getElementById('hint-btn-chart')
+    : document.getElementById('hint-btn');
+  if(!hintBox || !hintBtn) return;
+  hintBox.textContent=`💡 ヒント：${q.hint}`; hintBox.classList.add('show');
+  hintBtn.disabled=true;
+  hintBtn.textContent='💡 ヒントを見た';
+}
+
+function submitText(){
+  if(answered) return;
+  const q=questions[currentIndex];
+  const input=document.getElementById('text-ans');
+  const userAns=input.value.trim();
+  if(!userAns){ input.style.borderColor='orange'; setTimeout(()=>input.style.borderColor='',600); return; }
+  answered=true;
+  document.getElementById('submit-btn').disabled=true;
+  input.disabled=true;
+  const norm=s=>s.replace(/\s|　/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).toLowerCase();
+  const correctList=Array.isArray(q.answers)?q.answers:[q.answer];
+  const isCorrect=correctList.some(a=>norm(userAns)===norm(a));
+  input.className=isCorrect?'correct':'wrong';
+  processAnswer(isCorrect,userAns,q);
+}
+
+function processAnswer(isCorrect,userAns,q){
+  if(isCorrect){ correctCount++; document.getElementById('hud-ok').textContent=correctCount; }
+  else{ wrongCount++; document.getElementById('hud-ng').textContent=wrongCount; }
+  results.push({q,isCorrect,userAnswer:userAns});
+  const gained=isCorrect?q.exp:Math.floor(q.exp*0.2);
+  addExp(gained);
+  showFeedback(isCorrect,q,gained);
+  document.getElementById('next-btn').style.display='block';
+}
+
+function showFeedback(isCorrect,q,gained){
+  const fb=document.getElementById('feedback');
+  fb.className='feedback '+(isCorrect?'correct':'wrong')+' show';
+  const correctList=Array.isArray(q.answers)?q.answers:[q.answer];
+  const answerDisp=correctList.join('」または「');
+  fb.innerHTML=`
+    <div class="fb-title">${isCorrect?'🎉 正解！':`❌ 不正解… 正解は「${answerDisp}」`}</div>
+    <div class="fb-exp">${isCorrect?`✨ +${gained} EXP 獲得！`:`💧 +${gained} EXP（参加ポイント）`}</div>
+    <div class="fb-explain">📖 ${q.explanation}</div>
+  `;
+}
+
+function nextQuestion(){
+  if(currentIndex+1>=questions.length) showResult();
+  else{ currentIndex++; renderQuestion(); }
+}
+
+function updateProgress(){
+  const pct=(currentIndex/questions.length)*100;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-label').textContent=`${currentIndex}/${questions.length}`;
+}
+
+function showResult(){
+  document.getElementById('quiz-screen').style.display='none';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('result-screen').style.display='block';
+  const total=questions.length; const pct=correctCount/total; const lv=getLevel(exp);
+  let emoji,stars,msg;
+  if(pct>=1.0)      { emoji='🏆'; stars='⭐⭐⭐'; msg='全問正解！完璧だ！工業大臣の称号は伊達じゃない！✨'; }
+  else if(pct>=0.8) { emoji='😄'; stars='⭐⭐';   msg='よくできた！あと少しで満点。間違えた問題を確認しよう！'; }
+  else if(pct>=0.5) { emoji='😊'; stars='⭐';     msg='がんばった！半分以上正解。復習してもう一度挑戦！'; }
+  else              { emoji='💪'; stars='';        msg='まだ覚えていないところがあるね。一つずつ確認しよう！'; }
+  document.getElementById('res-emoji').textContent=emoji;
+  document.getElementById('res-stars').textContent=stars;
+  document.getElementById('res-score').innerHTML=`${correctCount}<span> / ${total}問正解</span>`;
+  document.getElementById('res-msg').textContent=msg;
+  document.getElementById('res-level').textContent=`Lv.${lv.lv}`;
+  document.getElementById('res-exp').textContent=exp;
+  document.getElementById('res-pct').textContent=Math.round(pct*100)+'%';
+
+  const newTitles=TITLES.filter(t=>t.id!=='start'&&!earnedTitles.includes(t.id)&&t.cond(results.map(r=>r.isCorrect),correctCount,wrongCount));
+  newTitles.forEach(t=>earnedTitles.push(t.id));
+  const topTitle=[...TITLES].reverse().find(t=>earnedTitles.includes(t.id))||TITLES[0];
+  document.getElementById('res-title-disp').textContent=`${topTitle.emoji} ${topTitle.name}`;
+
+  const grid=document.getElementById('tc-grid');
+  grid.innerHTML='';
+  TITLES.forEach(t=>{
+    const span=document.createElement('span');
+    span.className='tc-badge '+(earnedTitles.includes(t.id)?'earned':'locked');
+    span.textContent=earnedTitles.includes(t.id)?`${t.emoji} ${t.name}`:'🔒 ???';
+    span.title=earnedTitles.includes(t.id)?t.desc:'未獲得';
+    grid.appendChild(span);
+  });
+
+  const tbody=document.getElementById('res-tbody');
+  tbody.innerHTML='';
+  results.forEach((r,i)=>{
+    const shortQ=r.q.text.length>20?r.q.text.slice(0,20)+'…':r.q.text;
+    const correctDisp=Array.isArray(r.q.answers)?r.q.answers[0]:r.q.answer;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${shortQ}</td><td class="${r.isCorrect?'ok':'bad'}">${r.isCorrect?'✅ 正解':'❌ '+correctDisp}</td>`;
+    tbody.appendChild(tr);
+    if(!r.isCorrect){
+      const expTr=document.createElement('tr');
+      expTr.style.display='none';
+      expTr.innerHTML=`<td colspan="3" style="background:#e3f2fd;padding:8px 12px;font-size:0.82rem;color:#1a3a6a;line-height:1.6;border-left:3px solid var(--primary);">📖 ${r.q.explanation}</td>`;
+      tbody.appendChild(expTr);
+      const btnTr=document.createElement('tr');
+      btnTr.innerHTML=`<td colspan="3" style="padding:4px 12px 8px;background:#ffebee;"><button style="font-size:0.78rem;padding:4px 14px;border:1.5px solid var(--gold-dark);border-radius:999px;background:#fffde7;color:#a07020;cursor:pointer;font-family:inherit;font-weight:700;">💡 解説を見る</button></td>`;
+      tbody.appendChild(btnTr);
+      btnTr.querySelector('button')._expTr=expTr;
+      btnTr.querySelector('button').onclick=function(){ toggleExp(this); };
+    }
+  });
+  document.getElementById('review-btn').style.display=results.some(r=>!r.isCorrect)?'block':'none';
+  if(newTitles.length>0){ setTimeout(()=>{ showTitleOverlay(newTitles[0]); },800); }
+}
+
+function toggleExp(btn){
+  const expTr=btn._expTr;
+  const isShown=expTr.style.display!=='none';
+  expTr.style.display=isShown?'none':'table-row';
+  btn.textContent=isShown?'💡 解説を見る':'💡 解説を閉じる';
+}
+
+function restartQuiz(){
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('intro-screen').style.display='flex';
+  document.getElementById('intro-screen').style.flexDirection='column';
+  document.getElementById('intro-screen').style.alignItems='center';
+}
+
+function reviewWrong(){
+  const wrong=results.filter(r=>!r.isCorrect).map(r=>r.q);
+  if(wrong.length>0) startQuiz(wrong);
+}
+</script>
+</body>
+</html>

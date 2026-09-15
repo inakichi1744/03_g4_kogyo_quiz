@@ -226,6 +226,7 @@ body::before {
 .qa-popup-close{margin-top:16px;width:100%;padding:10px;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit;}
 .result-table td.q-cell{cursor:pointer;color:var(--primary-dark);text-decoration:underline dotted;}
 .exp-col-btn{font-size:0.74rem;padding:3px 10px;border:1.5px solid var(--gold-dark);border-radius:999px;background:#fffde7;color:#a07020;cursor:pointer;font-family:inherit;font-weight:700;white-space:nowrap;}
+.itag{word-break:keep-all;overflow-wrap:anywhere;} /* itag-nobreak */
 </style>
 </head>
 <body>
@@ -259,10 +260,9 @@ body::before {
   <div class="intro-sub">１２月の演習から出題！</div>
   <div class="intro-card">
     <div class="intro-tags">
-      <span class="itag itag-full" id="q-count-tag">🎯 全19問</span>
-      <span class="itag">重工業・軽工業</span>
+      <span class="itag">重工業・<wbr>軽工業</span>
       <span class="itag">太平洋ベルト</span>
-      <span class="itag">京浜・中京</span>
+      <span class="itag">京浜・<wbr>中京</span>
       <span class="itag">コンビナート</span>
       <span class="itag">自動車工業</span>
       <span class="itag">出荷額グラフ</span>

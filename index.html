@@ -258,7 +258,7 @@ body::before {
 <div id="intro-screen">
   <div style="height:40px"></div>
   <div class="intro-emblem">🏭</div>
-  <div class="intro-title">工業１・２<br>クイズ</div>
+  <div class="intro-title">工業<br>クイズ</div>
   <div class="intro-card">
     <div class="intro-tags">
       <span class="itag">重工業・軽工業</span>
@@ -578,12 +578,24 @@ const ALL_QUESTIONS = [
     exp:8 },
 ];
 
+// 前の問題の答えが次の問題文に出てくる問題などは、まとめて決まった順番で出す（まとまり同士・その他はランダム）
+const ORDER_GROUPS = [[13, 14], [15, 16]];
+function orderQuestions(list){
+  const byId={}; list.forEach(q=>byId[q.id]=q);
+  const used=new Set(); const units=[];
+  ORDER_GROUPS.forEach(g=>{const u=g.map(id=>byId[id]).filter(Boolean); u.forEach(q=>used.add(q.id)); if(u.length) units.push(u);});
+  list.forEach(q=>{ if(!used.has(q.id)) units.push([q]); });
+  for(let i=units.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [units[i],units[j]]=[units[j],units[i]];}
+  return units.flat();
+}
+
+
 // ===== ゲーム状態 =====
 let questions=[], currentIndex=0, correctCount=0, wrongCount=0, answered=false, results=[];
 
 function startQuiz(questionSet){
   const isReview=!!questionSet;
-  questions=questionSet||[...ALL_QUESTIONS].sort(()=>Math.random()-0.5);
+  questions=questionSet||orderQuestions(ALL_QUESTIONS);
   currentIndex=0; correctCount=0; wrongCount=0; results=[]; answered=false; exp=0;
   if(!isReview) earnedTitles=[];
   document.getElementById('intro-screen').style.display='none';
